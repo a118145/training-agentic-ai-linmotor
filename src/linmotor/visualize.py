@@ -157,7 +157,7 @@ def plot_thrust_curve(
     """Schub über eine elektrische Periode als PNG (benötigt magpylib)."""
     from .force import thrust_curve
 
-    xs = list(np.linspace(0.0, 2.0 * motor.track.pole_pitch_mm, n_points))
+    xs = list(np.linspace(-motor.track.pole_pitch_mm, motor.track.pole_pitch_mm, n_points))
     fx = thrust_curve(motor, xs, theta_offset)
     fig, ax = plt.subplots(figsize=(9, 4))
     ax.plot(xs, fx, color="#1f77b4")

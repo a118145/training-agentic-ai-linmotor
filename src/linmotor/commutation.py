@@ -20,11 +20,6 @@ def electrical_angle(x_forcer_mm: float, pole_pitch_mm: float) -> float:
 
 def phase_currents(theta_e: float, peak_current_A: float) -> tuple[float, float, float]:
     """Phasenströme (I_A, I_B, I_C) bei feldorientierter Kommutierung."""
-    print(
-        peak_current_A * math.sin(theta_e - 1 * _PHASE_OFFSET),
-        peak_current_A * math.sin(theta_e),
-        peak_current_A * math.sin(theta_e + 1 * _PHASE_OFFSET),
-    )
     return (
         peak_current_A * math.sin(theta_e - 1 * _PHASE_OFFSET),
         peak_current_A * math.sin(theta_e),

@@ -108,7 +108,7 @@ class CoilGeometry:
         if self.n_cells_x < 1 or self.n_cells_z < 1:
             raise ValueError("Zellzahlen müssen >= 1 sein.")
 
-    def cell_area_mm2(self) -> float:
+    def cell_area_mm2(self) -> int:
         """Fläche einer (gleichförmigen) finiten Volumenzelle in der x-z-Ebene."""
         return (self.width_mm / self.n_cells_x) * (self.height_mm / self.n_cells_z)
 

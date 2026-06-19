@@ -33,10 +33,12 @@ def _forcer(width: float) -> Forcer:
 
 
 def test_overlap_check() -> None:
-    # schmale Spulen (3 mm) passen in die 4-mm-Lücken -> keine Überlappung
+    # Spulenbreite <= τ/3 (4 mm) -> keine Überlappung
     assert _forcer(3.0).consistency_issues() == []
-    # breite Spulen (6 mm) überlappen
-    assert _forcer(6.0).consistency_issues() != []
+    # Spulenbreite > τ/3 -> phasenübergreifende Überlappung
+    assert _forcer(5.0).consistency_issues() != []
+    # Spulenbreite > Spannweite (12 mm) -> zusätzlich Hin-/Rückseiten-Überlappung
+    assert len(_forcer(14.0).consistency_issues()) == 4  # 1 inter-phase + 3 same-phase
 
 
 def test_air_gap_check() -> None:

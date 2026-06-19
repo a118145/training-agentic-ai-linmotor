@@ -164,25 +164,33 @@ class Forcer:
         return out
 
     def consistency_issues(self) -> list[str]:
-        """Geometrische Konsistenz: Überlappung der Spulenquerschnitte."""
+        """Geometrische Konsistenz: Spulenbreite gegen beide Überlappungsgrenzen.
+
+        Phasenübergreifend: Bündelabstand = τ/3, daher muss width_mm ≤ τ/3.
+        Innerhalb einer Phase: Hin-/Rückseite sind span auseinander, daher width_mm ≤ span.
+        """
         issues: list[str] = []
+        tau_third = self.pole_pitch_mm / 3.0
+        if self.coil.width_mm > tau_third + 1e-9:
+            issues.append(
+                f"Spulenbreite {self.coil.width_mm:.2f} mm > τ/3 = {tau_third:.2f} mm: "
+                "phasenübergreifende Überlappung der Leiterbündel."
+            )
         bundles = self.bundles()
         half_w = self.coil.width_mm / 2.0
-        half_h = self.coil.height_mm / 2.0
         for i in range(len(bundles)):
             for j in range(i + 1, len(bundles)):
                 a, b = bundles[i], bundles[j]
+                if a.phase_index != b.phase_index:
+                    continue
                 overlap_x = (min(a.x_center_mm, b.x_center_mm) + half_w) - (
                     max(a.x_center_mm, b.x_center_mm) - half_w
                 )
-                overlap_z = (min(a.z_center_mm, b.z_center_mm) + half_h) - (
-                    max(a.z_center_mm, b.z_center_mm) - half_h
-                )
-                if overlap_x > 1e-9 and overlap_z > 1e-9:
+                if overlap_x > 1e-9:
                     issues.append(
-                        f"Spulenüberlappung: Phase {a.phase_index} "
-                        f"(x={a.x_center_mm:.2f}) und Phase {b.phase_index} "
-                        f"(x={b.x_center_mm:.2f}), Überdeckung {overlap_x:.2f} mm."
+                        f"Spulenüberlappung in Phase {a.phase_index}: "
+                        f"Hin- (x={a.x_center_mm:.2f}) und Rückseite (x={b.x_center_mm:.2f}) "
+                        f"überlappen um {overlap_x:.2f} mm."
                     )
         return issues
 

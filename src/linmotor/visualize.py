@@ -39,7 +39,7 @@ def plot_motor(
     fig, ax = plt.subplots(figsize=(11, 5))
 
     # --- Magnete -------------------------------------------------------------
-    for x_c, z_c, width, height, p_x, p_z in magnet_layout(track, displacement_mm):
+    for x_c, z_c, width, height, p_x, p_z in magnet_layout(track, 0):
         norm = np.hypot(p_x, p_z) or 1.0
         # Farbe nach z-Komponente der Magnetisierung (rot = +z, blau = -z)
         shade = 0.5 + 0.5 * (p_z / norm)
@@ -66,10 +66,10 @@ def plot_motor(
         try:
             from .field import bfield, build_track
 
-            x_min = -coil.width_mm
-            x_max = forcer.bundles()[-1].x_center_mm + coil.width_mm
+            x_min = forcer.bundles()[0].x_center_mm - 2*coil.width_mm + theta_offset/np.pi * forcer.pole_pitch_mm + displacement_mm
+            x_max = forcer.bundles()[-1].x_center_mm + 2*coil.width_mm + theta_offset/np.pi * forcer.pole_pitch_mm + displacement_mm
             z_lo = track.magnet_top_mm() + 0.2
-            z_hi = forcer.coil_z_mm + coil.height_mm
+            z_hi = forcer.coil_z_mm + 1.5*coil.height_mm
             gx, gz = np.meshgrid(
                 np.linspace(x_min, x_max, 45), np.linspace(z_lo, z_hi, 16)
             )
@@ -83,13 +83,13 @@ def plot_motor(
             field_ok = False
 
     # --- Spulenbündel mit Stromrichtung --------------------------------------
-    theta_e = electrical_angle(-displacement_mm, track.pole_pitch_mm) + theta_offset
+    theta_e = electrical_angle(displacement_mm, track.pole_pitch_mm) + theta_offset
     currents = phase_currents(theta_e, forcer.peak_current_A)
     phase_color = {0: "#d62728", 1: "#2ca02c", 2: "#1f77b4"}
     for bundle in forcer.bundles():
         ax.add_patch(
             Rectangle(
-                (bundle.x_center_mm - coil.width_mm / 2, bundle.z_center_mm - coil.height_mm / 2),
+                (bundle.x_center_mm - coil.width_mm / 2 + theta_offset/np.pi * forcer.pole_pitch_mm + displacement_mm, bundle.z_center_mm - coil.height_mm / 2),
                 coil.width_mm,
                 coil.height_mm,
                 facecolor=phase_color[bundle.phase_index],
@@ -99,9 +99,9 @@ def plot_motor(
             )
         )
         i_signed = bundle.polarity * currents[bundle.phase_index]
-        symbol = "$\\odot$" if i_signed >= 0 else "$\\otimes$"  # Strom aus/in Ebene
+        symbol = "$\\odot$" if i_signed <= 0 else "$\\otimes$"  # Strom aus/in Ebene
         ax.text(
-            bundle.x_center_mm, bundle.z_center_mm, symbol,
+            bundle.x_center_mm+ theta_offset/np.pi * forcer.pole_pitch_mm + displacement_mm, bundle.z_center_mm, symbol,
             ha="center", va="center", fontsize=11, color="white",
         )
 
@@ -112,7 +112,7 @@ def plot_motor(
             from .force import force
 
             fvec = force(motor, displacement_mm, theta_offset)
-            cx = float(np.mean([b.x_center_mm for b in forcer.bundles()]))
+            cx = float(np.mean([b.x_center_mm for b in forcer.bundles()])) + theta_offset/np.pi * forcer.pole_pitch_mm+displacement_mm
             cz = forcer.coil_z_mm
             scale = track.pole_pitch_mm / (fvec.magnitude or 1.0)
             ax.arrow(
@@ -132,9 +132,10 @@ def plot_motor(
     ax.set_ylabel("z  /  mm  (Luftspalt)")
     ax.set_title(title)
     bundles = forcer.bundles()
+    track_min_max = (track.n_poles * track.pole_pitch_mm + track.magnet_width_mm ) / 2.0 + 2.0
     x_lo = min(b.x_center_mm for b in bundles) - coil.width_mm - 2.0
     x_hi = max(b.x_center_mm for b in bundles) + coil.width_mm + 2.0
-    ax.set_xlim(x_lo, x_hi)
+    ax.set_xlim(min(x_lo, -track_min_max), max(x_hi, track_min_max))
     ax.set_ylim(
         track.z_mm - track.magnet_height_mm,
         forcer.coil_z_mm + coil.height_mm + 1.0,

@@ -42,7 +42,7 @@ class MagnetTrack:
     polarization_T: float = 1.3
     z_mm: float = 0.0
     halbach: bool = False
-    n_segments_per_pole: int = 4
+    n_segments_per_pole: int = 2
     """Nur für Halbach: Segmente pro Polteilung (Diskretisierung der Rotation)."""
 
     def magnet_top_mm(self) -> float:
@@ -63,18 +63,18 @@ def magnet_layout(
     if track.halbach:
         n_seg = track.n_segments_per_pole
         seg_w = track.pole_pitch_mm / n_seg
-        for k in range(track.n_poles * n_seg):
-            x0 = (k + 0.5) * seg_w
-            angle = math.pi * x0 / track.pole_pitch_mm  # Periode 2*tau
-            p_x = track.polarization_T * math.sin(angle)
-            p_z = track.polarization_T * math.cos(angle)
+        for k in range(track.n_poles * n_seg + 1):
+            x0 = k * seg_w - track.n_poles * n_seg * seg_w / 2.0 #- seg_w / 2.0
+            angle = math.pi * x0 / track.pole_pitch_mm + math.pi / 2.0  # Periode 2*tau
+            p_x = track.polarization_T * math.cos(angle)
+            p_z = track.polarization_T * math.sin(angle)
             items.append(
                 (x0 + x_shift_mm, track.z_mm, seg_w, track.magnet_height_mm, p_x, p_z)
             )
     else:
         for i in range(track.n_poles):
-            x0 = (i + 0.5) * track.pole_pitch_mm
-            sign = 1.0 if i % 2 == 0 else -1.0
+            x0 = (i + 0.5) * track.pole_pitch_mm - track.n_poles * track.pole_pitch_mm / 2.0
+            sign = -1.0 if i % 2 == 0 else 1.0
             items.append(
                 (
                     x0 + x_shift_mm,
@@ -156,10 +156,11 @@ class Forcer:
         tau = self.pole_pitch_mm
         span = self.span_mm()
         out: list[ConductorBundle] = []
+        #coil_gap = 
         for phase in range(3):
-            x_phase = phase * (2.0 * tau / 3.0)
-            out.append(ConductorBundle(x_phase, self.coil_z_mm, 1.0, phase))
-            out.append(ConductorBundle(x_phase + span, self.coil_z_mm, -1.0, phase))
+            x_phase = phase * (1.0 * tau / 3.0) - span/3.0
+            out.append(ConductorBundle(x_phase-span/2, self.coil_z_mm, 1.0, phase))
+            out.append(ConductorBundle(x_phase + span/2, self.coil_z_mm, -1.0, phase))
         return out
 
     def consistency_issues(self) -> list[str]:

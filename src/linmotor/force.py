@@ -47,10 +47,11 @@ def force(motor: Motor, displacement_mm: float = 0.0, theta_offset: float = 0.0)
     forcer = motor.forcer
     coil = forcer.coil
 
-    collection = build_track(track, x_shift_mm=displacement_mm)
-    # Bei +displacement bewegt sich das Feldmuster mit; die Kommutierung läuft
-    # synchron mit der relativen Lage (Spule relativ zum Array = -displacement).
-    theta_e = electrical_angle(-displacement_mm, track.pole_pitch_mm) + theta_offset
+    collection = build_track(track, x_shift_mm=-displacement_mm)
+    # Bei +displacement bewegt sich das Feldmuster in Richtung -x; die Kommutierung läuft
+    # synchron mit der relativen Lage (Spule relativ zum Array = +displacement).
+    theta_e = electrical_angle(displacement_mm, track.pole_pitch_mm) + theta_offset
+    #print("theta_e:", theta_e)
     currents = phase_currents(theta_e, forcer.peak_current_A)
 
     a_cross_m2 = coil.width_mm * coil.height_mm * 1e-6
@@ -108,4 +109,5 @@ def thrust_curve(
 def ripple(samples: list[float]) -> float:
     """Relatives Schubrippel ``(max - min) / mean``."""
     mean = sum(samples) / len(samples)
+    print(f"Mean: {mean}, max: {max(samples)}, min: {min(samples)}")
     return (max(samples) - min(samples)) / mean

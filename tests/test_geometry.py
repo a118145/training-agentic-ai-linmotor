@@ -47,11 +47,11 @@ def test_air_gap_check() -> None:
 
 
 def test_halbach_layout_rotates() -> None:
-    track = MagnetTrack(12.0, 4, 10.0, 5.0, halbach=True, n_segments_per_pole=4)
+    track = MagnetTrack(12.0, 4, 10.0, 5.0, halbach=True, n_segments_per_pole=2)
     layout = magnet_layout(track)
-    assert len(layout) == 4 * 4
-    # erstes Segment ~ +z, viertel Periode später ~ +x
+    assert len(layout) == 4 * 2 + 1
+    # erstes Segment ~ +z, viertel Periode später ~ -x
     _, _, _, _, px0, pz0 = layout[0]
     assert pz0 > 0.9 * track.polarization_T
     _, _, _, _, px1, _ = layout[1]
-    assert px1 > 0.5  # x-Komponente steigt
+    assert px1 < -0.9 * track.polarization_T  # x-Komponente fällt

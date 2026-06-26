@@ -28,20 +28,22 @@ Die Module bauen darauf auf — sie analysieren, erweitern und verpacken diese B
 
 ## Der rote Faden
 
-| Modul | Thema | Ergebnis auf der Codebasis |
-|------:|-------|----------------------------|
-| 0 | Setup & Überblick | v0.2 läuft, Tests grün, erstes PNG |
-| 1 | Arbeiten in der Codebasis | `CLAUDE.md` angereichert, kleine Verbesserung + Test |
-| 2 | Plan Mode (**Feature-Baukasten**) | eine der Optionen A/B/C umgesetzt |
-| 3 | Subagent (read-only Typechecker) | Typfehler aus Modul 2 gefunden & sauber behoben |
-| 4 | Langzeitgedächtnis | `docs/ERKENNTNISSE.md` als persistentes Erkenntnis-Log |
-| 5 | MCP | `mcp_server.py` + `.mcp.json`: Codebasis als Werkzeug in Claude |
+| Session | Modul | Thema | Ergebnis auf der Codebasis |
+|--------:|------:|-------|----------------------------|
+| 1 | 0 | Setup & Überblick | v0.2 läuft, Tests grün, erstes PNG |
+| 1 | 1 | Arbeiten in der Codebasis | `CLAUDE.md` angereichert, kleine Verbesserung + Test |
+| 1 | 2 | Plan Mode (**Feature-Baukasten**) | eine der Optionen A/B/C umgesetzt |
+| 1 | 3 | Subagent (read-only Typechecker) | Typfehler aus Modul 2 gefunden & sauber behoben |
+| 2 | 4 | MCP | `mcp_server.py` + `.mcp.json`: Codebasis als Werkzeug in Claude |
+| 2 | 5 | Langzeitgedächtnis | `docs/ERKENNTNISSE.md` als persistentes Erkenntnis-Log |
 
 **Didaktische Idee:** Jedes Modul hinterlässt einen sichtbaren, besseren Zustand.
 Modul 3 „erntet" einen Fehler, den Modul 2 beim Implementieren erzeugt — so wird
 der Nutzen eines spezialisierten Agenten unmittelbar erlebbar.
 
 ---
+
+## Session 1
 
 ## Modul 0 — Setup & Überblick (15 min)
 
@@ -147,8 +149,7 @@ Prompt in Plan Mode:
 ```text
 Plane (noch nicht umsetzen): eine Funktion `compare_arrays(motor_std, motor_hal)
 -> dict[str, float]`, die für beide Anordnungen per Phasenfindung kommutiert und
-mittleren Schub sowie Rippel über eine elektrische Periode zurückgibt. Dazu eine
-Parameterstudie über `n_segments_per_pole` und ein PNG mit beiden Schubkurven.
+mittleren Schub sowie Rippel über eine elektrische Periode zurückgibt. 
 Berücksichtige unsere Konventionen aus CLAUDE.md.
 ```
 
@@ -248,53 +249,17 @@ Behebe den vom typechecker gemeldeten Typfehler und lass mypy erneut laufen.
 
 ---
 
-## Modul 4 — Langzeitgedächtnis (25 min)
+## Session 2
 
-**Lernziel:** Erkenntnisse **persistent** ablegen, getrennt von Tagescode.
+*Details zum zweiten Teil (MCP-Server, komplexere Agenten) werden separat ausgearbeitet.*
 
-### 4.1 Zwei Ebenen des Gedächtnisses
-- **`CLAUDE.md`** — langlebige *Konventionen* (Einheiten, Tooling, Arbeitsablauf).
-  Schnell ergänzen mit dem `#`-Präfix: eine mit `#` beginnende Zeile wird als
-  Memory-Eintrag gespeichert.
-- **`docs/ERKENNTNISSE.md`** — ein *Erkenntnis-Log*: datierte, fachliche Befunde
-  aus Analysen. Wird aus `CLAUDE.md` heraus referenziert.
-
-### 4.2 Referenz aus CLAUDE.md
-```text
-# Fachliche Auslegungs-Erkenntnisse stehen in docs/ERKENNTNISSE.md — vor
-# Auslegungsfragen dort nachschlagen und neue Befunde dort ergänzen.
-```
-
-### 4.3 Befund festhalten
-Den Befund aus der gewählten Modul-2-Aufgabe verstetigen, z. B.:
-```text
-Trage die Modul-2-Erkenntnis in docs/ERKENNTNISSE.md ein: Datum, Setup, Messwerte
-(z. B. Rippel Standard vs. Halbach, oder ab welcher Zellzahl die Kraft konvergiert,
-oder gemessene Normalkraft) und die Schlussfolgerung. Knapp und zitierfähig.
-```
-
-### 4.4 Test in neuer Session
-```text
-Ab welcher Finite-Volumen-Auflösung ist die Kraftberechnung praktisch konvergiert?
-```
-Claude liest `ERKENNTNISSE.md` und antwortet mit dem dokumentierten Befund statt
-neu zu rechnen — sichtbarer Gewinn eines persistenten Gedächtnisses.
-
-> **Abgrenzung:** `CLAUDE.md` = *wie wir arbeiten*. `ERKENNTNISSE.md` = *was wir
-> herausgefunden haben*. Beides liegt im Repo, also teamweit und über Sessions hinweg.
-
-**Zustand danach:** `docs/ERKENNTNISSE.md` mit erstem datiertem Befund, `CLAUDE.md`
-verweist darauf.
-
----
-
-## Modul 5 — MCP: die Codebasis als Werkzeug (45 min)
+## Modul 4 — MCP: die Codebasis als Werkzeug (45 min)
 
 **Lernziel:** `linmotor` als MCP-Tools bereitstellen, sodass Claude den Motor
 **selbst rechnen** kann. Der rote Faden schließt sich: aus der Bibliothek wird ein
 Werkzeug.
 
-### 5.1 Server schreiben
+### 4.1 Server schreiben
 `FastMCP` aus dem offiziellen Python-SDK (`mcp`). Der Server importiert `linmotor`
 und exponiert dünne Tool-Funktionen — inklusive Phasenfindung und vollem
 Kraftvektor.
@@ -311,7 +276,7 @@ stdio-Transport.
 ```
 Referenzlösung siehe Anhang A.
 
-### 5.2 In Claude Code registrieren (Projekt-Scope → `.mcp.json`)
+### 4.2 In Claude Code registrieren (Projekt-Scope → `.mcp.json`)
 ```bash
 claude mcp add linmotor --scope project -- uv run python mcp_server.py
 ```
@@ -327,7 +292,7 @@ Halbach (mean_thrust, ripple, max. Normalkraft) und empfiehl eine Variante.
 ```
 Claude ruft jetzt die echte Codebasis auf statt zu schätzen.
 
-### 5.3 Optional: Desktop-/Web-Client
+### 4.3 Optional: Desktop-/Web-Client
 Dieselbe Server-Definition funktioniert im Claude-Desktop-Client über dessen
 `claude_desktop_config.json` (gleiches JSON-Format, anderer Ablageort).
 
@@ -337,6 +302,46 @@ Dieselbe Server-Definition funktioniert im Claude-Desktop-Client über dessen
 
 **Zustand danach:** `mcp_server.py` + `.mcp.json`. Die Codebasis ist als benanntes
 Werkzeug `linmotor` in Claude eingebunden.
+
+---
+
+## Modul 5 — Langzeitgedächtnis (25 min)
+
+**Lernziel:** Erkenntnisse **persistent** ablegen, getrennt von Tagescode.
+
+### 5.1 Zwei Ebenen des Gedächtnisses
+- **`CLAUDE.md`** — langlebige *Konventionen* (Einheiten, Tooling, Arbeitsablauf).
+  Schnell ergänzen mit dem `#`-Präfix: eine mit `#` beginnende Zeile wird als
+  Memory-Eintrag gespeichert.
+- **`docs/ERKENNTNISSE.md`** — ein *Erkenntnis-Log*: datierte, fachliche Befunde
+  aus Analysen. Wird aus `CLAUDE.md` heraus referenziert.
+
+### 5.2 Referenz aus CLAUDE.md
+```text
+# Fachliche Auslegungs-Erkenntnisse stehen in docs/ERKENNTNISSE.md — vor
+# Auslegungsfragen dort nachschlagen und neue Befunde dort ergänzen.
+```
+
+### 5.3 Befund festhalten
+Den Befund aus der gewählten Modul-2-Aufgabe verstetigen, z. B.:
+```text
+Trage die Modul-2-Erkenntnis in docs/ERKENNTNISSE.md ein: Datum, Setup, Messwerte
+(z. B. Rippel Standard vs. Halbach, oder ab welcher Zellzahl die Kraft konvergiert,
+oder gemessene Normalkraft) und die Schlussfolgerung. Knapp und zitierfähig.
+```
+
+### 5.4 Test in neuer Session
+```text
+Ab welcher Finite-Volumen-Auflösung ist die Kraftberechnung praktisch konvergiert?
+```
+Claude liest `ERKENNTNISSE.md` und antwortet mit dem dokumentierten Befund statt
+neu zu rechnen — sichtbarer Gewinn eines persistenten Gedächtnisses.
+
+> **Abgrenzung:** `CLAUDE.md` = *wie wir arbeiten*. `ERKENNTNISSE.md` = *was wir
+> herausgefunden haben*. Beides liegt im Repo, also teamweit und über Sessions hinweg.
+
+**Zustand danach:** `docs/ERKENNTNISSE.md` mit erstem datiertem Befund, `CLAUDE.md`
+verweist darauf.
 
 ---
 

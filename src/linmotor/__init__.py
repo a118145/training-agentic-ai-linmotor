@@ -6,8 +6,10 @@ from .commutation import electrical_angle, phase_currents
 from .field import bfield, build_track
 from .force import (
     ForceVector,
+    compare_arrays,
     find_commutation_offset,
     force,
+    peak_thrust,
     ripple,
     thrust,
     thrust_curve,
@@ -36,6 +38,8 @@ __all__ = [
     "force",
     "thrust",
     "thrust_curve",
+    "peak_thrust",
+    "compare_arrays",
     "ripple",
     "find_commutation_offset",
     "example_motor",

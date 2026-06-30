@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("magpylib")
 
 from linmotor import (  # noqa: E402
+    compare_arrays,
     example_motor,
     find_commutation_offset,
     force,
@@ -54,6 +55,18 @@ def test_peak_thrust_consistent_with_thrust_curve() -> None:
     lo, hi = peak_thrust(motor, theta_offset=offset, n_points=120)
     assert lo == min(samples)
     assert hi == max(samples)
+
+
+def test_compare_arrays_keys() -> None:
+    """Rückgabe-Dict enthält genau die vier erwarteten Keys."""
+    result = compare_arrays(example_motor(halbach=False), example_motor(halbach=True))
+    assert set(result.keys()) == {"fx_standard", "ribble_standard", "fx_halbach", "ribble_halbach"}
+
+
+def test_compare_arrays_halbach_higher_fx() -> None:
+    """Halbach-Array erzeugt höheren mittleren Schub als Standard-Array."""
+    result = compare_arrays(example_motor(halbach=False), example_motor(halbach=True))
+    assert result["fx_halbach"] > result["fx_standard"]
 
 
 def test_halbach_offset_differs() -> None:

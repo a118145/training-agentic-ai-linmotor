@@ -1,5 +1,5 @@
 import linmotor as lm
-from linmotor.visualize import plot_motor, plot_thrust_curve
+from linmotor.visualize import plot_motor, plot_thrust_curve, plot_thrust_comparison
 
 
 m = lm.example_motor(halbach=True)
@@ -18,3 +18,4 @@ print(f"xs: {xs}")
 
 plot_motor(m, "motor.png", displacement_mm=disp, theta_offset=off)
 plot_thrust_curve(m, "thrust_curve.png", theta_offset=off)
+plot_thrust_comparison(lm.example_motor(halbach=True), lm.example_motor(halbach=False), "thrust_comparison.png")

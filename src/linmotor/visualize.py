@@ -171,3 +171,43 @@ def plot_thrust_curve(
     fig.savefig(path, dpi=dpi)
     plt.close(fig)
     return path
+
+
+def plot_thrust_comparison(
+    motor_std: Motor,
+    motor_hal: Motor,
+    path: str,
+    n_points: int = 120,
+    dpi: int = 150,
+) -> str:
+    """Vergleich der Schubkurven (Standard vs. Halbach) als PNG (benötigt magpylib)."""
+    from .force import find_commutation_offset, thrust_curve
+
+    offset_std = find_commutation_offset(motor_std)
+    offset_hal = find_commutation_offset(motor_hal)
+
+    tau = motor_std.track.pole_pitch_mm
+    xs = list(np.linspace(0.0, 2.0 * tau, n_points, endpoint=False))
+
+    fx_std = thrust_curve(motor_std, xs, offset_std)
+    fx_hal = thrust_curve(motor_hal, xs, offset_hal)
+
+    mean_std = sum(fx_std) / len(fx_std)
+    mean_hal = sum(fx_hal) / len(fx_hal)
+
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(xs, fx_std, color="#1f77b4", label="Standard")
+    ax.plot(xs, fx_hal, color="#ff7f0e", label="Halbach")
+    ax.axhline(mean_std, color="#1f77b4", linestyle="--", linewidth=0.8,
+               label=f"Mittelwert Standard ({mean_std:.2f} N)")
+    ax.axhline(mean_hal, color="#ff7f0e", linestyle="--", linewidth=0.8,
+               label=f"Mittelwert Halbach ({mean_hal:.2f} N)")
+    ax.set_xlabel("Array-Verschiebung  /  mm")
+    ax.set_ylabel("Schub $F_x$  /  N")
+    ax.set_title("Schubvergleich: Standard vs. Halbach")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=dpi)
+    plt.close(fig)
+    return path

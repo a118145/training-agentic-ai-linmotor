@@ -122,3 +122,30 @@ def ripple(samples: list[float]) -> float:
     mean = sum(samples) / len(samples)
     print(f"Mean: {mean}, max: {max(samples)}, min: {min(samples)}")
     return (max(samples) - min(samples)) / mean
+
+
+def compare_arrays(
+    motor_std: Motor, motor_hal: Motor, n_points: int = 120
+) -> dict[str, float]:
+    """Vergleicht Standard- und Halbach-Array über eine elektrische Periode.
+
+    Führt für beide Motoren die Phasenfindung durch und berechnet mittleren
+    Schub und relatives Rippel.
+
+    Rückgabe-Keys: ``fx_standard``, ``ribble_standard``, ``fx_halbach``, ``ribble_halbach``.
+    """
+    offset_std = find_commutation_offset(motor_std)
+    offset_hal = find_commutation_offset(motor_hal)
+
+    tau = motor_std.track.pole_pitch_mm
+    displacements = list(np.linspace(0.0, 2.0 * tau, n_points, endpoint=False))
+
+    samples_std = thrust_curve(motor_std, displacements, offset_std)
+    samples_hal = thrust_curve(motor_hal, displacements, offset_hal)
+
+    return {
+        "fx_standard": sum(samples_std) / len(samples_std),
+        "ribble_standard": ripple(samples_std),
+        "fx_halbach": sum(samples_hal) / len(samples_hal),
+        "ribble_halbach": ripple(samples_hal),
+    }

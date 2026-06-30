@@ -33,13 +33,13 @@ Die Module bauen darauf auf — sie analysieren, erweitern und verpacken diese B
 | 1 | 0 | Setup & Überblick | v0.2 läuft, Tests grün, erstes PNG |
 | 1 | 1 | Arbeiten in der Codebasis | `CLAUDE.md` angereichert, kleine Verbesserung + Test |
 | 1 | 2 | Plan Mode (**Feature-Baukasten**) | eine der Optionen A/B/C umgesetzt |
-| 1 | 3 | Subagent (read-only Typechecker) | Typfehler aus Modul 2 gefunden & sauber behoben |
+| 1 | 3 | Skill (Typecheck-Workflow) | Typfehler aus Modul 2 gefunden & sauber behoben |
 | 2 | 4 | MCP | `mcp_server.py` + `.mcp.json`: Codebasis als Werkzeug in Claude |
 | 2 | 5 | Langzeitgedächtnis | `docs/ERKENNTNISSE.md` als persistentes Erkenntnis-Log |
 
 **Didaktische Idee:** Jedes Modul hinterlässt einen sichtbaren, besseren Zustand.
 Modul 3 „erntet" einen Fehler, den Modul 2 beim Implementieren erzeugt — so wird
-der Nutzen eines spezialisierten Agenten unmittelbar erlebbar.
+der Nutzen eines wiederverwendbaren Skills unmittelbar erlebbar.
 
 ---
 
@@ -190,62 +190,80 @@ und das Ergebnis sichtbar machen (Tabelle oder PNG).
 > **Eingebauter Lehr-Effekt für Modul 3:** Beim Umsetzen schleicht sich häufig ein
 > Annotations-Schnitzer ein — z. B. `convergence_study(...) -> float`, obwohl ein
 > `dict` zurückkommt, oder `compare_arrays` liefert versehentlich eine `list`.
-> **Nicht sofort korrigieren** — diesen Fehler fängt in Modul 3 der Typecheck-Agent.
+> **Nicht sofort korrigieren** — diesen Fehler fängt in Modul 3 der Typecheck-Skill.
 
 **Zustand danach:** je nach Wahl `compare_arrays` / `convergence_study` /
 `force_angle_deg` + Tests + PNG — mit einem latenten Typproblem.
 
 ---
 
-## Modul 3 — Subagent: read-only Typechecker (30 min)
+## Modul 3 — Skill: Typecheck-Workflow als wiederverwendbares Wissen (30 min)
 
-**Lernziel:** Einen spezialisierten Subagenten anlegen, dessen Werkzeuge auf
-**Lesen** beschränkt sind. Er diagnostiziert, ändert aber nichts.
+**Lernziel:** Eine wiederkehrende Prozedur **plus projektspezifisches Know-how** als
+Skill verpacken. Claude lädt ihn bei Bedarf selbst (model-invoked, anhand der
+`description`) oder man ruft ihn per `/typecheck` auf. Das Wissen lebt damit
+versioniert im Repo statt in den Köpfen.
 
-### 3.1 Agent anlegen
-Interaktiv über `/agents` (von Anthropic empfohlen) — oder direkt die Datei
-schreiben. Read-only heißt: nur `Read, Grep, Glob` plus `Bash` ausschließlich zum
-Ausführen von `mypy`. **Kein** `Edit`/`Write`.
+> **Skill vs. Subagent — die Einordnung:** Ein **Skill** ist eine on-demand
+> ladbare Sammlung aus Anweisungen (und optional Skripten/Referenzen), die im
+> *aktuellen* Kontext mit den eigenen Rechten läuft — ideal, um eine Prozedur
+> samt Projektwissen zu bündeln. Ein **Subagent** läuft dagegen in *eigenem*
+> Kontext mit eigener Tool-Sandbox. Über `allowed-tools` bekommt der Skill eine
+> weiche Read-only-Schranke (ohne `Edit`/`Write` kann er während seiner Aktivität
+> nichts schreiben). Wer harte Isolation braucht, ergänzt `context: fork` mit dem
+> `Explore`-Agenten — aber für unseren Zweck genügt der reine Skill.
 
-`.claude/agents/typechecker.md`:
+### 3.1 Skill anlegen
+Ein Skill ist ein Verzeichnis `.claude/skills/<name>/SKILL.md`. Der Verzeichnisname
+bestimmt den Aufruf (`/typecheck`). Anlegen lassen via natürlicher Aufforderung oder
+direkt schreiben — die vollständige Datei liegt unter
+`.claude/skills/typecheck/SKILL.md` (Auszug):
+
 ```markdown
 ---
-name: typechecker
-description: >
-  Prüft den Python-Code mit mypy auf Typfehler. NUR Diagnose, niemals Änderungen.
-  Einsetzen nach Feature-Implementierungen oder vor einem Commit.
-tools: Read, Grep, Glob, Bash
-model: haiku
+name: typecheck
+description: Prüft die linmotor-Codebasis mit mypy auf Typfehler und meldet jeden
+  Fund mit Datei, Zeile und Korrekturvorschlag — ohne Dateien zu ändern. Anwenden
+  bei „Typfehler", „mypy", „type check", „vor dem Commit prüfen" oder nach einem Feature.
+allowed-tools: Read, Grep, Glob, Bash
 ---
-Du bist ein Typecheck-Spezialist für die Codebasis `linmotor`.
 
-Aufgabe:
-1. Führe `uv run mypy src` aus.
-2. Fasse jede Meldung zusammen: Datei, Zeile, Kern des Problems.
-3. Schlage pro Fund eine konkrete Korrektur vor — als Beschreibung, NICHT als Edit.
+# Typecheck (linmotor)
+Diagnose-Skill: führt `uv run mypy src` aus und berichtet Befunde, ohne Dateien zu
+ändern (keine `Edit`/`Write` in `allowed-tools`).
 
-Strikte Regeln:
-- Du veränderst NIEMALS Dateien (kein Edit/Write/MultiEdit).
-- Mit Bash führst du ausschließlich `mypy`/`uv run mypy` aus, sonst nichts.
-- Liegen keine Fehler vor, sage das klar und höre auf.
+## Projektwissen
+- Keine `# type: ignore` für magpylib/matplotlib (global ignoriert).
+- Analyse-Funktionen tragen Containertypen, nicht float:
+  thrust_curve -> list[float], convergence_study -> dict[int,float],
+  compare_arrays -> dict[str,float]  (häufigster Modul-2-Schnitzer).
+- numpy als NDArray[np.float64]; frozen dataclasses via dataclasses.replace(...).
+...
 ```
 
-> **Warum `model: haiku`?** Read-only-Diagnose ist günstig und schnell — perfekt für
-> einen häufig laufenden Helfer. Der eingebaute `Explore`-Agent ist aus demselben
-> Grund read-only auf Haiku.
+> **Warum die `description` so ausführlich ist:** Sie ist der *Auslöser*. Claude
+> entscheidet allein anhand von Name + Beschreibung, ob der Skill geladen wird —
+> also in der dritten Person formulieren, den Hauptnutzen voranstellen und die
+> Begriffe nennen, die im Team tatsächlich fallen. Der Rumpf wird erst geladen,
+> wenn der Skill greift (progressive disclosure).
 
-### 3.2 Agent benutzen
+### 3.2 Skill nutzen
+Direkt:
 ```text
-Nutze den typechecker-Subagenten auf das gesamte Repo.
+/typecheck
 ```
-Er findet den Typfehler aus Modul 2 und **berichtet** nur. Der Haupt-Thread behebt
-anschließend bewusst:
+…oder beiläufig, dann lädt Claude den Skill selbst:
 ```text
-Behebe den vom typechecker gemeldeten Typfehler und lass mypy erneut laufen.
+Prüf bitte die Typen, bevor wir committen.
+```
+Er findet den Typfehler aus Modul 2 und **berichtet** nur. Anschließend behebt der
+Haupt-Thread bewusst:
+```text
+Behebe den vom typecheck-Skill gemeldeten Typfehler und lass mypy erneut laufen.
 ```
 
-**Zustand danach:** `mypy` sauber, ein wiederverwendbarer Diagnose-Agent im Repo
-(`.claude/agents/typechecker.md`), versionierbar in Gitea.
+**Zustand danach:** `mypy` sauber, ein wiederverwendbarer Skill im Repo
+(`.claude/skills/typecheck/SKILL.md`), versionierbar in Gitea und teamweit nutzbar.
 
 ---
 
@@ -346,7 +364,7 @@ verweist darauf.
 ---
 
 ## Abschluss / Transfer (10 min)
-Von „Code lesen" → „planvoll erweitern" → „spezialisierte Agenten" → „persistentes
+Von „Code lesen" → „planvoll erweitern" → „wiederverwendbare Skills" → „persistentes
 Wissen" → „eigenes Werkzeug". Dasselbe Muster trägt im PI-Alltag vom
 Auslegungs-Skript bis zum hauseigenen MCP-Werkzeugkasten.
 

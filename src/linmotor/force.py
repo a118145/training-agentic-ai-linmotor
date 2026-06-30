@@ -106,6 +106,17 @@ def thrust_curve(
     return [thrust(motor, d, theta_offset) for d in displacements_mm]
 
 
+def peak_thrust(motor: Motor, theta_offset: float = 0.0, n_points: int = 120) -> tuple[float, float]:
+    """Minimaler und maximaler Schub über eine elektrische Periode (2*tau).
+
+    Gibt ``(min_thrust, max_thrust)`` in Newton zurück.
+    """
+    tau = motor.track.pole_pitch_mm
+    displacements = list(np.linspace(0.0, 2.0 * tau, n_points, endpoint=False))
+    samples = thrust_curve(motor, displacements, theta_offset)
+    return min(samples), max(samples)
+
+
 def ripple(samples: list[float]) -> float:
     """Relatives Schubrippel ``(max - min) / mean``."""
     mean = sum(samples) / len(samples)
